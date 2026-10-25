@@ -2,43 +2,53 @@
 
 Python **3.10+**. GPU is optional for reproducing the committed report (analysis is CPU-only). GPU is needed only if you re-run `01_cache.py` for a model.
 
-## 1. One-time setup
+## 1. One-time setup + first run
 
-In PowerShell, from the repo root:
+Easiest — one script (install + reproduce + log):
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\setup_and_run.ps1
+```
+
+Manual equivalent:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-
-# CUDA wheel for your driver (pick cu124 / cu126 / cu128 on https://pytorch.org)
 pip install torch --index-url https://download.pytorch.org/whl/cu126
 pip install -r requirements.txt
-
 $env:HF_HOME = "$PWD\hf-cache"
-```
-
-Check GPU visibility:
-
-```powershell
 python -c "import torch; print(torch.__version__, torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else None)"
+.\run.ps1
 ```
 
-`nvidia-smi` showing `CUDA Version: 13.0` means the **driver** can run that CUDA; you do **not** need Toolkit 13. A matching PyTorch CUDA wheel is enough.
+`nvidia-smi` showing `CUDA Version: 13.0` is the **driver** ceiling — you do **not** need Toolkit 13.
 
-## 2. Run everything after clone
+## 2. Logs — how to see what finished
+
+Every `run_pipeline.py` / `run.ps1` / `setup_and_run.ps1` run writes:
+
+```
+logs\run_YYYYMMDD_HHMMSS_<mode>.log
+```
+
+Inside you get:
+
+- torch / CUDA / GPU line at the start
+- each child command echoed with `+ ...`
+- full stdout of every step
+- `STEP OK [name]  12.3s` or `STEP FAIL [name] ...`
+- final block `=== SUMMARY ===` with `result: SUCCESS` or `FAILED`
 
 ```powershell
-.\run.ps1              # self-check + tables + figures for mamba + pythia-160m
-.\run.ps1 check        # self-checks only
+# last log, last 40 lines (includes SUMMARY)
+Get-Content (Get-ChildItem logs\run_*.log | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName -Tail 40
 ```
 
-Equivalent without the helper:
+Exit code `0` = success. Non-zero = open that log and look for `STEP FAIL`.
 
-```powershell
-python scripts\run_pipeline.py reproduce
-```
-
-Committed `cache/*.npz` already contain the paper-matched forwards, so the default mode does **not** download big models.
+Committed `cache/*.npz` already contain the paper-matched forwards, so default `reproduce` does **not** download big models.
 
 ## 3. Modes
 

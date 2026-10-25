@@ -8,43 +8,34 @@ Runs **natively on Windows** (or any OS) with Python + optional NVIDIA GPU. No D
 
 ---
 
-## Quick start (Windows + GPU)
+## Quick start (Windows + GPU laptop)
 
-Prerequisites:
-
-1. Python 3.10+
-2. NVIDIA driver (`nvidia-smi` works). An RTX 3060 **6 GB** is enough to reproduce the report and re-cache small models; **not** enough for Pythia-6.9B (~14 GB).
+Prerequisites: Python 3.10+, NVIDIA driver (`nvidia-smi`). RTX 3060 **6 GB** is enough for the default report; **not** for Pythia-6.9B (~14 GB).
 
 ```powershell
 git clone <this-repo>
 cd ml-research-practice
-
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install torch --index-url https://download.pytorch.org/whl/cu126
-pip install -r requirements.txt
-$env:HF_HOME = "$PWD\hf-cache"
-
-.\run.ps1
+Set-ExecutionPolicy -Scope Process Bypass
+.\setup_and_run.ps1
 ```
 
-That runs self-checks and **rebuilds all report tables/figures from the committed caches** (no big model download).
+That installs `.venv` + CUDA torch + deps, then runs self-checks and **rebuilds all report tables/figures from the committed caches**.
 
-### Useful modes
+Every run writes `logs\run_YYYYMMDD_HHMMSS_<mode>.log` with per-step `STEP OK` / `STEP FAIL` and a final `SUMMARY` (`SUCCESS` / `FAILED`). Exit code `0` = success.
+
+### Later runs (env already set up)
 
 | Command | What it does |
 |---|---|
-| `.\run.ps1` | Aggregate + figures for `mamba-1.4b-hf` and `pythia-160m` from `cache/*.npz` |
+| `.\run.ps1` | Aggregate + figures for `mamba-1.4b-hf` and `pythia-160m` |
 | `.\run.ps1 check` | Self-checks only |
 | `.\run.ps1 full -Model EleutherAI/pythia-160m` | GPU-cache that model if missing, then score |
 | `.\run.ps1 reproduce -Notebooks` | Also rebuild/execute notebooks |
-| `.\run.ps1 pythia69` | Pythia-6.9B float16 — needs ~**14 GB** VRAM (refuses on smaller GPUs) |
-
-Same thing without PowerShell:
+| `.\run.ps1 pythia69` | Pythia-6.9B float16 — needs ~**14 GB** VRAM |
 
 ```powershell
-python scripts\run_pipeline.py reproduce
-python scripts\run_pipeline.py check
+python scripts\run_pipeline.py reproduce   # same as .\run.ps1
+Get-Content (Get-ChildItem logs\run_*.log | Sort LastWriteTime -Desc | Select -First 1).FullName -Tail 40
 ```
 
 More detail: [`docs/LOCAL_RUN.md`](docs/LOCAL_RUN.md).
@@ -62,12 +53,15 @@ scripts/
   run_pipeline.py      one-command orchestrator (no Docker)
   build_notebooks.py   generate/execute notebooks
 run.ps1                Windows entrypoint → run_pipeline.py
+setup_and_run.ps1      first-time: venv + deps + reproduce
 cache/                 committed per-token caches (skip re-running the model)
 results/               tables + figures
+logs/                  run transcripts (STEP OK/FAIL + SUMMARY; gitignored)
 notebooks/             narrative notebooks
 docs/                  practice record + local instructions
 REPORT.md              findings
 ```
+
 
 Design: the model runs **once** per (model, split); every baseline and variant is a function of the same cached `logp` / `mu` / `sigma`. Matched compute by construction.
 

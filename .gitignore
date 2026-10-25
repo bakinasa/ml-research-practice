@@ -1,6 +1,7 @@
 # caches are small and committed on purpose -- they are the expensive artefact
 !cache/*.npz
 hf-cache/
+logs/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
