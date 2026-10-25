@@ -1,0 +1,43 @@
+# One-command GPU run (Linux + NVIDIA Container Toolkit):
+#   docker compose up --build
+#
+# Modes via MODE / command override:
+#   reproduce  — aggregate + figures from committed caches (default, no big downloads)
+#   full       — cache missing models on GPU, then aggregate + figures + notebooks
+#   cache      — only run 01_cache.py for HF_MODEL
+#   shell      — interactive bash
+#
+# Examples:
+#   docker compose up --build
+#   MODE=full HF_MODEL=EleutherAI/pythia-6.9b DTYPE=float16 docker compose up --build
+#   docker compose run --rm minkpp shell
+
+services:
+  minkpp:
+    build: .
+    image: minkpp-practice:gpu
+    gpus: all
+    working_dir: /app
+    environment:
+      MODE: ${MODE:-reproduce}
+      HF_MODEL: ${HF_MODEL:-state-spaces/mamba-1.4b-hf}
+      SHORT_MODEL: ${SHORT_MODEL:-}
+      DEVICE: ${DEVICE:-cuda}
+      DTYPE: ${DTYPE:-float32}
+      N_BOOT: ${N_BOOT:-2000}
+      NOTEBOOKS: ${NOTEBOOKS:-0}
+      HF_HOME: /data/hf-cache
+      TRANSFORMERS_CACHE: /data/hf-cache
+      HF_HUB_DISABLE_TELEMETRY: "1"
+    volumes:
+      # persist caches, tables, figures on the host
+      - ./cache:/app/cache
+      - ./results:/app/results
+      - ./notebooks:/app/notebooks
+      # Hugging Face downloads (models/datasets) — keep across rebuilds
+      - hf-cache:/data/hf-cache
+    # default CMD is "reproduce"; override with: docker compose run minkpp full
+    # or MODE=full docker compose up --build
+
+volumes:
+  hf-cache:

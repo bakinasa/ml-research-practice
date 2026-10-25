@@ -1,0 +1,4 @@
+split,n,single_auroc_halfwidth
+WikiMIA_length32,776,3.7427327542288613
+WikiMIA_length64,542,4.448289870668093
+WikiMIA_length128,250,6.481852453777415
