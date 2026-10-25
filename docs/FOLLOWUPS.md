@@ -18,23 +18,22 @@ logs/followups_*.log
 | **C** | `06_h7_calibration.py` | Length-binned thresholds raise **TPR@5%FPR** (AUROC unchanged by design) | no |
 | **D** | `07_concat_windows.py` | On `WikiMIA_concat`, H1 windows beat diluted global Min-K%++ | **yes** (first cache) |
 
-## Run
+## Run (preferred: one command)
 
 ```powershell
-# A+B+C on Mamba (uses committed caches + scores)
-.\run_followups.ps1
-.\run_followups.ps1 -Model pythia-160m
+# first time on the GPU laptop (install + everything)
+.\setup_and_run.ps1
 
-# also D (downloads zjysteven/WikiMIA_concat, caches with pythia-160m)
-.\run_followups.ps1 all -WithConcat
-.\run_followups.ps1 concat
+# later (venv already exists)
+.\run.ps1 everything
 ```
 
-Or:
+That runs the original report **and** A+B+C for both models **and** D (`WikiMIA_concat`).
 
 ```powershell
-python scripts\run_followups.py abc --model mamba-1.4b-hf
-python scripts\07_concat_windows.py --model EleutherAI/pythia-160m --device cuda
+.\run.ps1 everything -SkipConcat   # no GPU concat step
+.\run.ps1 followups                # only A+B+C
+.\run_followups.ps1 concat         # only D
 ```
 
 ## How to read success

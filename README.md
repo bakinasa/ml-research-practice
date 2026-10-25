@@ -19,19 +19,21 @@ Set-ExecutionPolicy -Scope Process Bypass
 .\setup_and_run.ps1
 ```
 
-That installs `.venv` + CUDA torch + deps, then runs self-checks and **rebuilds all report tables/figures from the committed caches**.
+That installs `.venv` + CUDA torch + deps, then runs **everything** in one go:
+original report (caches → tables/figures) **and** follow-ups A–D (stacking, H10, H7, WikiMIA_concat).
 
-Every run writes `logs\run_YYYYMMDD_HHMMSS_<mode>.log` with per-step `STEP OK` / `STEP FAIL` and a final `SUMMARY` (`SUCCESS` / `FAILED`). Exit code `0` = success.
+Every run writes `logs\run_*.log` with `STEP OK` / `STEP FAIL` + `SUMMARY`. Exit code `0` = success.
 
 ### Later runs (env already set up)
 
 | Command | What it does |
 |---|---|
-| `.\run.ps1` | Aggregate + figures for `mamba-1.4b-hf` and `pythia-160m` |
+| `.\run.ps1 everything` | **One command:** reproduce + follow-ups A–D |
+| `.\run.ps1` | Only original report from caches |
+| `.\run.ps1 followups` | Only A+B+C |
+| `.\run.ps1 everything -SkipConcat` | Everything except WikiMIA_concat (no GPU for D) |
 | `.\run.ps1 check` | Self-checks only |
-| `.\run.ps1 full -Model EleutherAI/pythia-160m` | GPU-cache that model if missing, then score |
-| `.\run.ps1 reproduce -Notebooks` | Also rebuild/execute notebooks |
-| `.\run.ps1 pythia69` | Pythia-6.9B float16 — needs ~**14 GB** VRAM |
+| `.\run.ps1 pythia69` | Pythia-6.9B — needs ~**14 GB** VRAM |
 
 ```powershell
 python scripts\run_pipeline.py reproduce   # same as .\run.ps1

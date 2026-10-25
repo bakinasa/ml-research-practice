@@ -4,6 +4,8 @@
 Modes
 -----
     reproduce   self-check + aggregate + figures from committed caches (default)
+    everything  reproduce + follow-ups A/B/C (both models) + D WikiMIA_concat
+    followups   only A/B/C for both models (no concat)
     cache       run 01_cache.py for HF_MODEL if caches are missing
     full        cache (if needed) + aggregate + figures for one model
     pythia69    cache EleutherAI/pythia-6.9b in float16 (~14 GB VRAM), then score
@@ -14,9 +16,9 @@ Exit code 0 = success; non-zero = a step failed (see the log summary).
 
 Examples
 --------
+    python scripts/run_pipeline.py everything
     python scripts/run_pipeline.py
     python scripts/run_pipeline.py full --model EleutherAI/pythia-160m --device cuda
-    python scripts/run_pipeline.py reproduce --notebooks
 """
 
 from __future__ import annotations
@@ -233,8 +235,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("mode", nargs="?", default="reproduce",
-                    choices=["reproduce", "cache", "full", "pythia69", "check",
-                             "followups"])
+                    choices=["reproduce", "everything", "cache", "full",
+                             "pythia69", "check", "followups"])
     ap.add_argument("--model", default="state-spaces/mamba-1.4b-hf",
                     help="HF id or short name (default: Mamba-1.4B)")
     ap.add_argument("--device", default="cuda", choices=["cuda", "cpu"])
@@ -242,6 +244,10 @@ def main() -> int:
                     choices=["float32", "float16", "bfloat16"])
     ap.add_argument("--n-boot", type=int, default=2000)
     ap.add_argument("--notebooks", action="store_true")
+    ap.add_argument("--concat-model", default="EleutherAI/pythia-160m",
+                    help="HF id for WikiMIA_concat follow-up D")
+    ap.add_argument("--skip-concat", action="store_true",
+                    help="with everything: skip follow-up D (no GPU cache)")
     a = ap.parse_args()
 
     os.chdir(ROOT)
@@ -249,20 +255,45 @@ def main() -> int:
     log_path = LOGS / f"run_{stamp}_{a.mode}.log"
     LOG = RunLog(log_path)
 
+    def do_reproduce(device: str) -> None:
+        self_check()
+        dtype = "float32"
+        for short in ("mamba-1.4b-hf", "pythia-160m"):
+            if caches_present(short, dtype):
+                aggregate_and_figures(short, dtype, a.n_boot)
+            else:
+                LOG.info(f"skip {short}: no {dtype} caches in cache/")
+                LOG.steps.append((f"aggregate {short}", "SKIP", 0.0))
+        if a.notebooks:
+            run_notebooks("mamba-1.4b-hf")
+
+    def do_followups_abc() -> None:
+        for short in ("mamba-1.4b-hf", "pythia-160m"):
+            LOG.step(
+                f"followups abc {short}",
+                lambda s=short: run(py(
+                    str(SCRIPTS / "run_followups.py"), "abc", "--model", s,
+                )),
+            )
+
+    def do_followups_concat(device: str) -> None:
+        LOG.step(
+            "followups D concat",
+            lambda: run(py(
+                str(SCRIPTS / "run_followups.py"), "concat",
+                "--concat-model", a.concat_model,
+                "--device", device,
+                "--concat-dtype", "float16",
+            )),
+        )
+
     ok = False
     try:
         LOG.info("=== Min-K%++ pipeline ===")
         LOG.info(f"mode={a.mode}  model={a.model}  device={a.device}  dtype={a.dtype}")
 
         if a.mode == "followups":
-            # A+B+C for both committed models; leaves original results/ intact.
-            for short in ("mamba-1.4b-hf", "pythia-160m"):
-                LOG.step(
-                    f"followups abc {short}",
-                    lambda s=short: run(py(
-                        str(SCRIPTS / "run_followups.py"), "abc", "--model", s,
-                    )),
-                )
+            do_followups_abc()
             ok = True
             return 0
 
@@ -273,16 +304,15 @@ def main() -> int:
         if a.mode == "check":
             self_check()
         elif a.mode == "reproduce":
-            self_check()
-            dtype = "float32"
-            for short in ("mamba-1.4b-hf", "pythia-160m"):
-                if caches_present(short, dtype):
-                    aggregate_and_figures(short, dtype, a.n_boot)
-                else:
-                    LOG.info(f"skip {short}: no {dtype} caches in cache/")
-                    LOG.steps.append((f"aggregate {short}", "SKIP", 0.0))
-            if a.notebooks:
-                run_notebooks("mamba-1.4b-hf")
+            do_reproduce(device)
+        elif a.mode == "everything":
+            do_reproduce(device)
+            do_followups_abc()
+            if a.skip_concat:
+                LOG.info("skipping follow-up D (--skip-concat)")
+                LOG.steps.append(("followups D concat", "SKIP", 0.0))
+            else:
+                do_followups_concat(device)
         elif a.mode == "cache":
             self_check()
             cache_one(a.model, device, a.dtype)
