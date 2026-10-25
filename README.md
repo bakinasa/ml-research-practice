@@ -2,63 +2,52 @@
 
 Reproducible study of aggregation improvements for [Min-K%++](https://arxiv.org/abs/2404.02936) (Zhang et al., ICLR 2025) on WikiMIA.
 
-**Findings:** see [`REPORT.md`](REPORT.md).  
-**Branch:** `sofiia-s08-minkpp` (work in progress — not committed yet if you cloned empty).
+**Findings:** see [`REPORT.md`](REPORT.md).
+
+Runs **natively on Windows** (or any OS) with Python + optional NVIDIA GPU. No Docker.
 
 ---
 
-## One command on Linux + NVIDIA GPU
+## Quick start (Windows + GPU)
 
-Prerequisites on the laptop:
+Prerequisites:
 
-1. [Docker](https://docs.docker.com/engine/install/) + Compose v2  
-2. [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)  
-3. Check: `docker run --rm --gpus all nvidia/cuda:12.4.0-base-ubuntu22.04 nvidia-smi`
+1. Python 3.10+
+2. NVIDIA driver (`nvidia-smi` works). An RTX 3060 **6 GB** is enough to reproduce the report and re-cache small models; **not** enough for Pythia-6.9B (~14 GB).
 
-Then from this repo:
+```powershell
+git clone <this-repo>
+cd ml-research-practice
 
-```bash
-chmod +x run.sh docker/entrypoint.sh
-./run.sh
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install torch --index-url https://download.pytorch.org/whl/cu126
+pip install -r requirements.txt
+$env:HF_HOME = "$PWD\hf-cache"
+
+.\run.ps1
 ```
 
-That builds the image and **reproduces all report tables/figures from the committed caches** (no big model download). Equivalent:
-
-```bash
-docker compose up --build
-# or:
-docker compose run --rm minkpp reproduce
-```
+That runs self-checks and **rebuilds all report tables/figures from the committed caches** (no big model download).
 
 ### Useful modes
 
 | Command | What it does |
 |---|---|
-| `./run.sh` | Aggregate + figures for `mamba-1.4b-hf` and `pythia-160m` from `cache/*.npz` |
-| `./run.sh full` | GPU-cache `HF_MODEL` if missing, then aggregate + figures |
-| `./run.sh pythia69` | Cache **Pythia-6.9B** in `float16` on GPU (needs ~14–16 GB VRAM), then score |
-| `./run.sh shell` | Interactive shell in the container |
-| `NOTEBOOKS=1 ./run.sh` | Also rebuild/execute notebooks |
+| `.\run.ps1` | Aggregate + figures for `mamba-1.4b-hf` and `pythia-160m` from `cache/*.npz` |
+| `.\run.ps1 check` | Self-checks only |
+| `.\run.ps1 full -Model EleutherAI/pythia-160m` | GPU-cache that model if missing, then score |
+| `.\run.ps1 reproduce -Notebooks` | Also rebuild/execute notebooks |
+| `.\run.ps1 pythia69` | Pythia-6.9B float16 — needs ~**14 GB** VRAM (refuses on smaller GPUs) |
 
-Examples:
+Same thing without PowerShell:
 
-```bash
-# New model on GPU (default HF_MODEL is Mamba; override as needed)
-HF_MODEL=EleutherAI/pythia-6.9b DTYPE=float16 ./run.sh full
-
-# Explicit short name for aggregate (usually auto from HF id)
-HF_MODEL=EleutherAI/pythia-6.9b SHORT_MODEL=pythia-6.9b DTYPE=float16 ./run.sh full
+```powershell
+python scripts\run_pipeline.py reproduce
+python scripts\run_pipeline.py check
 ```
 
-Outputs land on the host under `./cache`, `./results` (and `./notebooks` if enabled). Hugging Face downloads persist in the Docker volume `hf-cache`.
-
-### Without the `./run.sh` helper
-
-```bash
-docker compose build
-docker compose run --rm minkpp reproduce
-MODE=full HF_MODEL=EleutherAI/pythia-6.9b DTYPE=float16 docker compose run --rm minkpp full
-```
+More detail: [`docs/LOCAL_RUN.md`](docs/LOCAL_RUN.md).
 
 ---
 
@@ -70,12 +59,13 @@ scripts/
   01_cache.py          only GPU/CPU model step → cache/*.npz
   02_aggregate.py      score all variants → results/*.csv
   03_figures.py        → results/figures/*.png
+  run_pipeline.py      one-command orchestrator (no Docker)
   build_notebooks.py   generate/execute notebooks
-cache/                 committed per-token caches (small; skip re-running the model)
+run.ps1                Windows entrypoint → run_pipeline.py
+cache/                 committed per-token caches (skip re-running the model)
 results/               tables + figures
 notebooks/             narrative notebooks
-docker/entrypoint.sh   container orchestrator
-docs/                  practice record + local (non-Docker) instructions
+docs/                  practice record + local instructions
 REPORT.md              findings
 ```
 
@@ -87,23 +77,14 @@ Design: the model runs **once** per (model, split); every baseline and variant i
 
 | Target | Approx. | Notes |
 |---|---|---|
-| Reproduce from caches | 0 (analysis is CPU) | Default `./run.sh` |
-| Mamba-1.4B cache | ~3–6 GB | Already committed in `float32` |
-| **Pythia-6.9B** cache | **~14 GB fp16** | Main reason for GPU laptop; `./run.sh pythia69` |
-| LLaMA-7B+ | usually more / gated | Not wired as a default mode |
-
-If `DEVICE=cuda` but CUDA is invisible in the container, the entrypoint falls back to CPU and prints a warning.
-
----
-
-## Local run (no Docker)
-
-See [`docs/LOCAL_RUN.md`](docs/LOCAL_RUN.md).
+| Reproduce from caches | 0 (analysis is CPU) | Default `.\run.ps1` |
+| Mamba-1.4B / pythia-160m cache | fits in 6 GB | Prefer `float16` if VRAM is tight |
+| **Pythia-6.9B** cache | **~14 GB fp16** | `.\run.ps1 pythia69` only on large cards |
 
 ---
 
 ## What is / isn’t in this repo yet
 
-**Included:** WikiMIA original, Min-K% / Min-K%++ baselines, H1–H10 + N1–N4, paired bootstrap, figures, Mamba-1.4B + pythia-160m caches, Docker one-shot.
+**Included:** WikiMIA original, Min-K% / Min-K%++ baselines, H1–H10 + N1–N4, paired bootstrap, figures, Mamba-1.4B + pythia-160m caches, Windows one-shot.
 
-**Still outstanding** (not implemented as compose modes): Neighbor / Lowercase / Smaller-Ref baselines, paraphrased splits, truncation split, LLaMA columns. See `docs/sofiia-s08-practice.md` §9.
+**Still outstanding** (not wired as pipeline modes): Neighbor / Lowercase / Smaller-Ref baselines, paraphrased splits, truncation split, LLaMA columns. See `docs/sofiia-s08-practice.md` §9.
