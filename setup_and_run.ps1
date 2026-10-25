@@ -1,4 +1,4 @@
-# One-shot: install deps + run EVERYTHING (original report + follow-ups A–D).
+# One-shot: install deps + run EVERYTHING (original report + follow-ups A-D).
 # From the repo root in PowerShell:
 #   Set-ExecutionPolicy -Scope Process Bypass
 #   .\setup_and_run.ps1

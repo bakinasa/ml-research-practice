@@ -2,7 +2,7 @@
 # Prefer setup_and_run.ps1 the first time on a machine.
 #
 # Usage:
-#   .\run.ps1 everything       # EVERYTHING: reproduce + follow-ups A–D
+#   .\run.ps1 everything       # EVERYTHING: reproduce + follow-ups A-D
 #   .\run.ps1                  # reproduce tables/figures from committed caches
 #   .\run.ps1 followups        # only A+B+C
 #   .\run.ps1 check            # self-checks only
@@ -31,7 +31,7 @@ Set-Location $PSScriptRoot
 if (Test-Path ".\.venv\Scripts\python.exe") {
     $py = (Resolve-Path ".\.venv\Scripts\python.exe").Path
 } else {
-    Write-Host "WARNING: .venv not found — using system python. Run .\setup_and_run.ps1 first." -ForegroundColor Yellow
+    Write-Host "WARNING: .venv not found - using system python. Run .\setup_and_run.ps1 first." -ForegroundColor Yellow
     $py = (Get-Command python -ErrorAction Stop).Source
 }
 

@@ -1,4 +1,4 @@
-# Follow-up experiments A–D (separate from the original H1–H10 pipeline).
+# Follow-up experiments A-D (separate from the original H1-H10 pipeline).
 #
 # Usage (after .\setup_and_run.ps1 or with .venv ready):
 #   .\run_followups.ps1                  # A+B+C on mamba (no GPU)
