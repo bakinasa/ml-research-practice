@@ -10,7 +10,7 @@
 # Every run writes logs\run_YYYYMMDD_HHMMSS_<mode>.log with STEP OK/FAIL + SUMMARY.
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("reproduce", "cache", "full", "pythia69", "check")]
+    [ValidateSet("reproduce", "cache", "full", "pythia69", "check", "followups")]
     [string]$Mode = "reproduce",
 
     [string]$Model = "state-spaces/mamba-1.4b-hf",

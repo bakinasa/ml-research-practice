@@ -82,3 +82,18 @@ Design: the model runs **once** per (model, split); every baseline and variant i
 **Included:** WikiMIA original, Min-K% / Min-K%++ baselines, H1–H10 + N1–N4, paired bootstrap, figures, Mamba-1.4B + pythia-160m caches, Windows one-shot.
 
 **Still outstanding** (not wired as pipeline modes): Neighbor / Lowercase / Smaller-Ref baselines, paraphrased splits, truncation split, LLaMA columns. See `docs/sofiia-s08-practice.md` §9.
+
+---
+
+## Follow-ups (separate from H1–H10)
+
+After the main reproduce, optional experiments that look for a **plus** outside aggregation:
+
+| | Experiment | Command |
+|---|---|---|
+| A | Stack Loss/Zlib/Min-K%/Min-K%++ | `.\run_followups.ps1` |
+| B | H10 accuracy–compute trade-off | (included in `abc`) |
+| C | H7 length thresholds → TPR@5% | (included in `abc`) |
+| D | H1 on `WikiMIA_concat` | `.\run_followups.ps1 all -WithConcat` |
+
+Outputs: `results/followups/` (+ figures). Docs: [`docs/FOLLOWUPS.md`](docs/FOLLOWUPS.md).

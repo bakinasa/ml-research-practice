@@ -233,7 +233,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("mode", nargs="?", default="reproduce",
-                    choices=["reproduce", "cache", "full", "pythia69", "check"])
+                    choices=["reproduce", "cache", "full", "pythia69", "check",
+                             "followups"])
     ap.add_argument("--model", default="state-spaces/mamba-1.4b-hf",
                     help="HF id or short name (default: Mamba-1.4B)")
     ap.add_argument("--device", default="cuda", choices=["cuda", "cpu"])
@@ -252,6 +253,19 @@ def main() -> int:
     try:
         LOG.info("=== Min-K%++ pipeline ===")
         LOG.info(f"mode={a.mode}  model={a.model}  device={a.device}  dtype={a.dtype}")
+
+        if a.mode == "followups":
+            # A+B+C for both committed models; leaves original results/ intact.
+            for short in ("mamba-1.4b-hf", "pythia-160m"):
+                LOG.step(
+                    f"followups abc {short}",
+                    lambda s=short: run(py(
+                        str(SCRIPTS / "run_followups.py"), "abc", "--model", s,
+                    )),
+                )
+            ok = True
+            return 0
+
         print_torch()
         device = resolve_device(a.device)
         LOG.info("")
